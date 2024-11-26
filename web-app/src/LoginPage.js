@@ -16,15 +16,17 @@ function LoginPage({ onLogin }) {
 
   return (
     <div className="login-container">
-      <h2>Logowanie</h2>
+      <h2 >Logowanie</h2>
       <form onSubmit={handleSubmit}>
         <input
+        class="inp"
           type="text"
           placeholder="Nazwa użytkownika"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
         <input
+          class="inp"
           type="password"
           placeholder="Hasło"
           value={password}

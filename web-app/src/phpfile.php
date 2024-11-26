@@ -1,27 +1,55 @@
 <?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Content-Type: application/json");
 
-    header("Access-Control-Allow-Origin: *"); // Pozwala na komunikację między domenami
-    header("Content-Type: application/json");
+// Obsługa zapytania OPTIONS (preflight request)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+// Parametry połączenia z bazą danych
+$host = "localhost";
+$user = "root";
+$password = "";
+$database = "users_db";
+
+try {
+    $conn = new mysqli($host, $user, $password, $database);
     
-    $conn = mysqli_connect("localhost", "root", "", "users_db");
-    
-    if (!$conn) {
-        die(json_encode(["Błąd połączenia z bazą"]));
+    if ($conn->connect_error) {
+        throw new Exception("Błąd połączenia z bazą: " . $conn->connect_error);
     }
     
-    if (isset($_POST['username'])) {
-        $username = mysqli_real_escape_string($conn, $_POST['username']);
-        $zapytanie = "SELECT * FROM users WHERE username = '$username'";
-        $wynik = mysqli_query($conn, $zapytanie);
+    // Sprawdzanie czy przesłano nazwę użytkownika
+    if (!isset($_POST['username']) || empty($_POST['username'])) {
+        throw new Exception("Nie podano nazwy użytkownika");
+    }
     
-        if (mysqli_num_rows($wynik) > 0) {
-            echo json_encode(["Użytkownik istnieje w bazie"]);
-        } else {
-            echo json_encode(["Użytkownik nie istnieje w bazie"]);
-        }
+    $username = $conn->real_escape_string($_POST['username']);
+    
+    // Przygotowane zapytanie (prepared statement) dla bezpieczeństwa
+    $stmt = $conn->prepare("SELECT id FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        echo json_encode(["Użytkownik $username istnieje w bazie"]);
     } else {
-        echo json_encode(["Nie podano nazwy użytkownika"]);
+        echo json_encode(["Użytkownik $username nie istnieje w bazie"]);
     }
     
-    mysqli_close($conn);
+    $stmt->close();
+    
+} catch (Exception $e) {
+    http_response_code(400);
+    echo json_encode([$e->getMessage()]);
+} finally {
+    if (isset($conn)) {
+        $conn->close();
+    }
+}
 ?>
